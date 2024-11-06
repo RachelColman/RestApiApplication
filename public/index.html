@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deploy BPMN model</title>
+</head>
+<body>
+    <h1>Deploy BPMN Model</h1>
+    <label for="username">Username: </label>
+    <input type="text" id="username" placeholder="Enter your username"><br><br>
+    <label for="password">Password: </label>
+    <input type="text" id="password" placeholder="Enter your password"><br><br>
+    <input type="file" id="fileInput"><br><br>
+    <button id="deployButton">Deploy Model</button>
+    <div id="status"></div>
+
+    <script>
+        document.getElementById('deployButton').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('status');
+            const fileInput = document.getElementById('fileInput').files[0];
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if(!fileInput) {
+                console.log('No file selected');
+                statusDiv.textContent = 'No file Selected!';
+                return;
+            }
+
+            if(!username || !password) {
+                console.log('Username or password not provided');
+                statusDiv.textContent = 'Please enter your username or password';
+                return;
+            }
+
+            console.log('File selected', fileInput);
+
+            statusDiv.textContent = 'Deploying...';
+
+            try{
+                const formData = new FormData();
+                formData.append('file', fileInput);
+
+                const encodedCredentials = btoa(`${username}:${password}`);
+                
+                const response = await fetch('/deploy', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic' + encodedCredentials,
+                    },
+                    body: formData
+                });
+
+                console.log('Response status', response.status);
+                console.log('Response headers', response.headers);
+
+                const contentType = response.headers.get('content-type');
+
+                if(response.ok) {
+                    if(contentType && contentType.includes('application/json')) {
+                        const result = await response.json();
+                        statusDiv.textContent = 'Deployment successful!';
+                        console.log('Success', result);
+                    } else {
+                        const text = await response.text();
+                        statusDiv.textContent = 'Unexpected response' + text;
+                        console.log('Text response', text);
+                    }
+                } else {
+                    const errorText = await response.text();
+                    if(response.status == 403) {
+                        statusDiv.textContent = 'Invalid credentials. Please try again';
+                    } else {
+                        statusDiv.textContent = `Deployment failed: ${error.error}`;
+                    }
+                    console.error('Error', errorText);
+                }
+            } catch (error) {
+                statusDiv.textContent= 'An error occurred' + error.message;
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
